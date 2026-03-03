@@ -71,17 +71,16 @@ This version is fully software-based and runs entirely on a PC (no FPGA required
 ## Project Structure
 
 
-    Smart-Face-Attendance-PC/
+    Smart-Face-Attendance-System/
     │
     ├── main.py
     ├── requirements.txt
     ├── README.md
-    ├── models/
-    │ ├── model_dynamic.tflite
-    │ ├── gallery.npy
-    │ └── names.txt
-    └── sample_output/
-    └── demo_screenshot.png
+    ├── .gitignore
+    │
+    ├── model_dynamic.tflite
+    ├── gallery.npy
+    └── names.txt
 
 
 ---
