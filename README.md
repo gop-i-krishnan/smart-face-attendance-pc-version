@@ -1,111 +1,164 @@
-# fpga-cnn-accelerator
+# Smart Face Attendance System (PC Version)
 
-# 🚀 CNN Conv1 Hardware Accelerator using Vitis HLS (Zynq-7020)
+## Overview
 
-## 📌 Overview
+Smart Face Attendance System is a real-time face recognition-based attendance application built using FaceNet (512-dimensional embeddings) and TensorFlow Lite.
 
-This project implements the first convolution layer (Conv1) of a quantized CNN model using **Vitis HLS 2023.2**, targeting the **Zynq-7020 FPGA (PYNQ-Z2 board)**.
+The system captures live video from a webcam, detects faces, generates embeddings using a pre-trained FaceNet model, compares them with a stored gallery using cosine similarity, and marks attendance automatically.
 
-The design accelerates a 3×3 stride-2 convolution layer using int8 quantization and fixed-point requantization, demonstrating FPGA-based parallel CNN acceleration.
-
----
-
-## 🧠 Layer Configuration
-
-- **Input:** 160 × 160 × 3  
-- **Kernel:** 3 × 3  
-- **Stride:** 2  
-- **Output:** 79 × 79 × 32  
-- **Data type:** int8 (quantized)
-
-The accelerator performs:
-
-1. 3×3×3 Multiply-Accumulate (MAC)
-2. Bias addition
-3. Fixed-point scaling (requantization)
-4. Saturation to int8
+This version is fully software-based and runs entirely on a PC (no FPGA required).
 
 ---
 
-## ⚙️ Hardware Architecture
+## Key Features
 
-The design uses:
+- Real-time face detection using OpenCV
+- FaceNet model (InceptionResNetV2 backbone)
+- 512-dimensional L2-normalized embeddings
+- Cosine similarity-based recognition
+- Multi-face recognition support
+- Confidence threshold filtering (default: 0.60)
+- 15-frame confirmation logic for stability
+- Live bounding boxes and confidence display
+- Attendance status overlay
+- TensorFlow Lite inference (Float32 model)
 
-- AXI4 Master interface for input/output memory access
-- On-chip BRAM buffering of the input feature map
-- Loop pipelining (Initiation Interval = 1)
-- Partial output-channel parallelization (4 channels processed in parallel)
-- Fully unrolled 3×3×3 MAC computation
+---
 
-### Dataflow
-AXI Input → BRAM Buffer → Parallel MAC → Bias → Requantization → Clamp → AXI Output
+## System Architecture
+
+
+Webcam
+↓
+Face Detection (Haar Cascade)
+↓
+Preprocessing (Resize 160×160, Normalize to [-1, 1])
+↓
+TFLite FaceNet Inference
+↓
+512-D Embedding
+↓
+Cosine Similarity with Gallery
+↓
+Threshold Check
+↓
+Attendance Marking
 
 
 ---
 
-## 🚀 Optimization Journey
+## Model Details
 
-| Version | Latency (cycles) | Description |
-|----------|------------------|-------------|
-| Baseline | ~5.3M | Sequential convolution |
-| BRAM Buffered | ~276k | Eliminated AXI bottleneck |
-| 4-Channel Parallel | ~326k | Output-channel parallelization |
-
-- **Clock frequency:** 100 MHz  
-- **Execution time:** ~3.2 ms per Conv1 inference  
-
----
-
-## 📊 Resource Utilization (Zynq-7020)
-
-- **BRAM:** ~50  
-- **DSP:** ~21  
-- **LUT:** ~11k  
-- **Timing achieved:** 7.3 ns (Target: 10 ns)
+- Model: FaceNet (Pre-trained)
+- Backbone: InceptionResNetV2
+- Input Shape: 160 × 160 × 3 (RGB)
+- Output: 512-dimensional embedding
+- Similarity Metric: Cosine Similarity
+- Threshold: 0.60
+- Frame Confirmation Requirement: 15 frames
 
 ---
 
-## 🛠 Tools Used
+## Performance (PC)
 
-- Vitis HLS 2023.2  
-- Vivado (Target device: xc7z020clg400-1)  
-- C/C++ (High-Level Synthesis)
-
----
-
-## 🎯 Project Objective
-
-This project demonstrates:
-
-- Efficient FPGA acceleration of CNN layers
-- Data reuse through BRAM buffering
-- Parallel multiply-accumulate architecture
-- Fixed-point quantization handling
-- Performance vs resource trade-off optimization
+- Frame Rate: 30–60 FPS
+- Latency: ~20 ms per frame
+- Multi-face recognition supported
+- Robust under moderate lighting variation
 
 ---
 
-## 📂 Repository Structure
+## Project Structure
 
-- `first_conv.cpp` — Top-level HLS implementation  
-- `first_conv.h` — Function declaration  
-- `conv_params.h` — Quantized weights, bias, and scaling parameters  
+
+Smart-Face-Attendance-PC/
+│
+├── main.py
+├── requirements.txt
+├── README.md
+├── models/
+│ ├── model_dynamic.tflite
+│ ├── gallery.npy
+│ └── names.txt
+└── sample_output/
+└── demo_screenshot.png
+
 
 ---
 
-## 📌 Future Improvements
+## Installation
 
-- Implement sliding-window line buffer architecture  
-- Integrate HLS IP into Vivado block design  
-- Extend design to full CNN pipeline acceleration  
+1. Clone the repository:
+
+
+git clone https://github.com/gop-i-krishnan/Smart-Face-Attendance-System.git
+
+cd Smart-Face-Attendance-System
+
+
+2. Install dependencies:
+
+
+pip install -r requirements.txt
+
 
 ---
 
-## 👤 Authors
+## How to Run
 
-- Gopi Krishnan  
-- Milan Martin  
-- Gilbert Franco  
 
-Electronics & Communication Engineering  
-Focused on FPGA acceleration, embedded AI, and hardware optimization.
+python main.py
+
+
+- Press `q` to quit the application.
+- Recognized individuals will be marked as PRESENT after 15 confirmed frames.
+
+---
+
+## Gallery Database
+
+The system uses:
+
+- `gallery.npy` → 512-dimensional embeddings per person  
+- `names.txt` → Corresponding names  
+
+Each embedding is L2-normalized for stable cosine similarity comparison.
+
+---
+
+## Recognition Logic
+
+1. Extract embedding from detected face
+2. Normalize embedding
+3. Compute cosine similarity with stored gallery
+4. Select highest similarity score
+5. If score > threshold → Mark as recognized
+6. If confirmed for 15 frames → Mark attendance
+
+---
+
+## Future Improvements
+
+- Replace Haar Cascade with MediaPipe for better detection
+- Add GUI interface (Tkinter / PyQt)
+- Add dynamic enrollment feature
+- Store attendance in SQLite database
+- Add web dashboard
+- Deploy as Docker container
+
+---
+
+## Author
+
+Developed as part of a Smart Face Attendance System mini project.
+
+Team Members:
+- Gopi Krishnan
+- Milan Martin
+- Gilbert Franco
+
+---
+
+## License
+
+This project is for educational and research purposes.
