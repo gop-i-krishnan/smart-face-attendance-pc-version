@@ -28,21 +28,21 @@ This version is fully software-based and runs entirely on a PC (no FPGA required
 ## System Architecture
 
 
-Webcam
-↓
-Face Detection (Haar Cascade)
-↓
-Preprocessing (Resize 160×160, Normalize to [-1, 1])
-↓
-TFLite FaceNet Inference
-↓
-512-D Embedding
-↓
-Cosine Similarity with Gallery
-↓
-Threshold Check
-↓
-Attendance Marking
+    Webcam
+      ↓
+    Face Detection (Haar Cascade)
+      ↓
+    Preprocessing (Resize 160×160, Normalize to [-1, 1])
+      ↓
+    TFLite FaceNet Inference
+      ↓
+    512-D Embedding
+      ↓
+    Cosine Similarity with Gallery
+      ↓
+    Threshold Check
+      ↓
+    Attendance Marking
 
 
 ---
