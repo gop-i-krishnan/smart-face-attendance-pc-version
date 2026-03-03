@@ -91,7 +91,7 @@ Smart-Face-Attendance-PC/
 1. Clone the repository:
 
 
-git clone https://github.com/gop-i-krishnan/Smart-Face-Attendance-System.git
+git clone [https://github.com/gop-i-krishnan/Smart-Face-Attendance-System.git](https://github.com/gop-i-krishnan/smart-face-attendance-pc-version.git)
 
 cd Smart-Face-Attendance-System
 
