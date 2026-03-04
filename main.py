@@ -1,7 +1,11 @@
 import cv2
+import time
 import numpy as np
 import tensorflow as tf
 from collections import defaultdict
+
+from core.attendance import AttendanceManager
+
 
 # ================= CONFIG =================
 IMG_SIZE = (160, 160)
@@ -19,8 +23,12 @@ gallery = gallery / (np.linalg.norm(gallery, axis=1, keepdims=True) + 1e-10)
 with open(NAMES_PATH, "r") as f:
     names = [line.strip() for line in f.readlines()]
 
+attendance_manager = AttendanceManager(names)
+
 attendance = {name: "ABSENT" for name in names}
 frame_count = defaultdict(int)
+last_seen = {}
+TIMEOUT_SECONDS = 3
 
 print(f"✅ Loaded {len(names)} people from gallery")
 print(f"   Names: {names}")
@@ -108,10 +116,20 @@ while True:
         # Recognition logic
         if best_score > SIM_THRESHOLD:
             name = names[best_idx]
+            current_time = time.time()
+
+            # Reset frame count if timeout exceeded
+            if name in last_seen:
+                if current_time - last_seen[name] > TIMEOUT_SECONDS:
+                    frame_count[name] = 0
+
             frame_count[name] += 1
+            last_seen[name] = current_time
             
             if frame_count[name] >= REQUIRED_FRAMES:
-                attendance[name] = "PRESENT"
+                if attendance[name] != "PRESENT":
+                    attendance[name] = "PRESENT"
+                    attendance_manager.mark_present(name)
             
             label = f"{name} ({best_score:.2f})"
             color = (0, 255, 0)
@@ -143,10 +161,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-
-print("\n" + "="*50)
-print("FINAL ATTENDANCE:")
-print("="*50)
-for person, status in attendance.items():
-    print(f"{person}: {status}")
-print("="*50)
+exit(0)
