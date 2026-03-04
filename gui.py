@@ -20,7 +20,6 @@ class AttendanceGUI:
         self.root.geometry("700x650")
 
         self.is_running = False
-        self.process = None
         self.cap = None
         
         # Load FaceNet model
@@ -29,6 +28,9 @@ class AttendanceGUI:
 
         self.input_details = self.interpreter.get_input_details()[0]
         self.output_details = self.interpreter.get_output_details()[0]
+        self.face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
         
         # Face recognition config
         self.IMG_SIZE = (160, 160)
@@ -119,6 +121,7 @@ class AttendanceGUI:
             ret, frame = self.cap.read()
 
             if ret:
+                frame = self.process_frame(frame)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 frame = cv2.resize(frame, (500, 350))
 
@@ -129,6 +132,94 @@ class AttendanceGUI:
                 self.video_label.configure(image=imgtk)
 
             self.root.after(30, self.update_frame)
+
+    def process_frame(self, frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
+
+        for (x, y, w, h) in faces:
+            mh = int(h * self.MARGIN)
+            mw = int(w * self.MARGIN)
+            y1 = max(0, y - mh)
+            y2 = min(frame.shape[0], y + h + mh)
+            x1 = max(0, x - mw)
+            x2 = min(frame.shape[1], x + w + mw)
+
+            face = frame[y1:y2, x1:x2]
+            if face.size == 0:
+                continue
+
+            img = cv2.resize(face, self.IMG_SIZE)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = img.astype(np.float32)
+            img = (img - 127.5) / 128.0
+            inp = np.expand_dims(img, axis=0)
+
+            if self.input_details["dtype"] == np.int8:
+                scale, zero = self.input_details["quantization"]
+                inp = np.round(inp / scale + zero).astype(np.int8)
+                inp = np.clip(inp, -128, 127)
+
+            self.interpreter.set_tensor(self.input_details["index"], inp)
+            self.interpreter.invoke()
+            emb = self.interpreter.get_tensor(self.output_details["index"]).squeeze()
+
+            if self.output_details["dtype"] == np.int8:
+                scale, zero = self.output_details["quantization"]
+                emb = (emb.astype(np.float32) - zero) * scale
+
+            emb = emb / (np.linalg.norm(emb) + 1e-10)
+            sims = self.gallery @ emb
+            best_idx = int(np.argmax(sims))
+            best_score = float(sims[best_idx])
+
+            if best_score > self.SIM_THRESHOLD:
+                name = self.names[best_idx]
+                current_time = time.time()
+
+                if name in self.last_seen and (current_time - self.last_seen[name] > self.TIMEOUT_SECONDS):
+                    self.frame_count[name] = 0
+
+                self.frame_count[name] += 1
+                self.last_seen[name] = current_time
+
+                if self.frame_count[name] >= self.REQUIRED_FRAMES and self.attendance[name] != "PRESENT":
+                    self.attendance[name] = "PRESENT"
+                    self.attendance_manager.mark_present(name)
+                    self.status_label.config(text=f"Marked PRESENT: {name}")
+
+                label = f"{name} ({best_score:.2f})"
+                color = (0, 255, 0)
+            else:
+                label = f"Unknown ({best_score:.2f})"
+                color = (0, 0, 255)
+
+            cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+            cv2.putText(
+                frame,
+                label,
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                2,
+            )
+
+        y0 = frame.shape[0] - 100
+        for person, status in self.attendance.items():
+            status_color = (0, 255, 0) if status == "PRESENT" else (255, 255, 0)
+            cv2.putText(
+                frame,
+                f"{person}: {status}",
+                (20, y0),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                status_color,
+                2,
+            )
+            y0 += 25
+
+        return frame
         
     def on_close(self):
         if self.cap:
