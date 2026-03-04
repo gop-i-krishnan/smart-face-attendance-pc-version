@@ -1,0 +1,8 @@
+2026-03-05 01:00:09,646 | INFO | core.attendance | Database initialized at data\attendance.db
+2026-03-05 01:00:09,657 | INFO | gui | GUI initialized with 3 registered identities
+2026-03-05 01:00:23,112 | INFO | gui | Camera started at index 0
+2026-03-05 01:00:25,009 | INFO | core.attendance | Attendance already present for Gopi on 2026-03-05
+2026-03-05 01:00:25,009 | INFO | gui | Recognition confirmed for Gopi
+2026-03-05 01:00:36,406 | INFO | gui | Camera stopped
+2026-03-05 01:00:39,582 | INFO | gui | Application closing
+2026-03-05 01:00:39,583 | INFO | gui | Camera stopped

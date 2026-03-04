@@ -1,4 +1,4 @@
-import csv
+import logging
 from datetime import datetime
 
 import cv2
@@ -10,6 +10,8 @@ from core.recognition import FaceRecognitionEngine
 from ui.layout import build_main_layout, configure_treeview_style
 from ui.theme import COLORS
 
+logger = logging.getLogger(__name__)
+
 
 class AttendanceGUI:
     def __init__(self, root):
@@ -20,7 +22,9 @@ class AttendanceGUI:
         self.recognition_config = RecognitionConfig()
         self.engine = FaceRecognitionEngine(self.app_config, self.recognition_config)
         self.attendance_manager = AttendanceManager(
-            self.engine.names, self.app_config.attendance_dir
+            self.engine.names,
+            self.app_config.attendance_dir,
+            self.app_config.database_path,
         )
 
         self.is_running = False
@@ -32,6 +36,7 @@ class AttendanceGUI:
         self.refresh_table()
         self.update_clock()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        logger.info("GUI initialized with %d registered identities", len(self.engine.names))
 
     def set_status(self, text: str, mode: str = "info") -> None:
         palette = {
@@ -54,12 +59,14 @@ class AttendanceGUI:
         self.cap = cv2.VideoCapture(self.app_config.camera_index)
         if not self.cap.isOpened():
             self.set_status("Camera not found", "error")
+            logger.error("Camera not found at index %d", self.app_config.camera_index)
             return
 
         self.is_running = True
         self.widgets["start_button"].config(state="disabled")
         self.widgets["stop_button"].config(state="normal")
         self.set_status("Camera Running", "info")
+        logger.info("Camera started at index %d", self.app_config.camera_index)
         self.update_frame()
 
     def stop_system(self) -> None:
@@ -71,6 +78,7 @@ class AttendanceGUI:
         self.widgets["start_button"].config(state="normal")
         self.widgets["stop_button"].config(state="disabled")
         self.set_status("System Stopped", "error")
+        logger.info("Camera stopped")
 
     def update_frame(self) -> None:
         if not (self.is_running and self.cap):
@@ -82,6 +90,7 @@ class AttendanceGUI:
             for name in newly_marked:
                 self.attendance_manager.mark_present(name)
                 self.set_status(f"Marked PRESENT: {name}", "success")
+                logger.info("Recognition confirmed for %s", name)
 
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.resize(frame, (680, 420))
@@ -97,18 +106,12 @@ class AttendanceGUI:
         table.delete(*table.get_children())
 
         today = datetime.now().strftime("%Y-%m-%d")
-        file_path = self.app_config.attendance_dir / f"{today}.csv"
-        present_count = 0
+        rows = self.attendance_manager.get_rows_for_date(today)
+        for row in rows:
+            table.insert("", "end", values=(row[0], row[1]))
 
-        if file_path.exists():
-            with file_path.open("r", encoding="utf-8") as file:
-                reader = csv.reader(file)
-                next(reader, None)
-                for row in reader:
-                    table.insert("", "end", values=(row[0], row[2]))
-                    present_count += 1
-
-        total = len(self.engine.names)
+        present_count = self.attendance_manager.get_present_count_for_date(today)
+        total = self.attendance_manager.get_total_students()
         absent = max(total - present_count, 0)
         self.widgets["total_label"].config(text=f"Total Registered: {total}")
         self.widgets["present_label"].config(text=f"Present Today: {present_count}")
@@ -118,5 +121,6 @@ class AttendanceGUI:
         self.root.after(self.app_config.table_refresh_ms, self.refresh_table)
 
     def on_close(self) -> None:
+        logger.info("Application closing")
         self.stop_system()
         self.root.destroy()

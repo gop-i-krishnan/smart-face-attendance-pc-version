@@ -17,6 +17,7 @@ class AppConfig:
     gallery_path: Path = Path("gallery.npy")
     names_path: Path = Path("names.txt")
     attendance_dir: Path = Path("data/attendance_logs")
+    database_path: Path = Path("data/attendance.db")
     camera_index: int = 0
     frame_delay_ms: int = 30
     table_refresh_ms: int = 3000
